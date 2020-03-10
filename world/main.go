@@ -1,17 +1,17 @@
 package main
 
 import (
-  "flag"
+	"flag"
 	"fmt"
-  "github.com/golang/glog"
+	"github.com/golang/glog"
 )
 
 func Hello() string {
-  glog.Info("Calling Hello()")
-  return "Hello World!"
+	glog.Info("Calling Hello()")
+	return "Hello World!"
 }
 
 func main() {
-  flag.Parse()
+	flag.Parse()
 	fmt.Println(Hello())
 }

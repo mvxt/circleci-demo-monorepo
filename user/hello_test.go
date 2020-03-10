@@ -1,14 +1,14 @@
 package main
 
 import (
-  "testing"
+	"testing"
 )
 
 func TestHello(t *testing.T) {
-  actual := Hello()
-  expected := "Hello User!"
+	actual := Hello()
+	expected := "Hello User!"
 
-  if actual != expected {
-    t.Errorf("Actual: %q. Expected: %q", actual, expected)
-  }
+	if actual != expected {
+		t.Errorf("Actual: %q. Expected: %q", actual, expected)
+	}
 }
