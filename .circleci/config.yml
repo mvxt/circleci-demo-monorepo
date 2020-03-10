@@ -16,6 +16,7 @@ parameters:
     default: false
   service-name:
     type: string
+    default: ""
 
 ############
 # WORKFLOWS
