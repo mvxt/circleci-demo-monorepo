@@ -60,18 +60,25 @@ jobs:
             # For every folder in directories
             #   Check if folder in ignore list
             #   If not, check if folder has changes in git and make API call
+            NO_BUILD=true
             while IFS= read -r line; do \
               IGNORE=false; \
               for item in "${IGNORE_FILES[@]}"; do \
                 [[ "$line" == "$item" ]] && IGNORE=true; \
               done; \
               if [ "$IGNORE" = false ] && ! git diff --quiet << pipeline.git.revision >> << pipeline.git.base_revision >> -- "$line"; then \
+                echo "$line has changed, triggering"; \
+                NO_BUILD=false; \
                 curl -u ${CIRCLE_TOKEN}: -X POST https://circleci.com/api/v2/project/gh/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pipeline \
                 -H 'Content-Type: application/json' \
                 -H 'Accept: application/json' \
                 -d '{"branch": "'"${CIRCLE_BRANCH}"'", "parameters": {"service-name": "'"${line}"'"}'; \
               fi; \
             done \<<< "$DIRS"
+
+            if [ "$NO_BUILD" = true ]; then \
+              echo "No services changed. Exiting"; \
+            fi
 
   build-service:
     parameters:
