@@ -36,11 +36,19 @@ workflows:
       - gatekeeper:
           context: test-monorepo-context
   
-  service-<< pipeline.parameters.service-name >>:
+  service:
     when: << pipeline.parameters.service >>
     jobs:
       - build-service:
+          name: build-<< pipeline.paramaters.service-name >>
           directory: << pipeline.parameters.service-name >>
+      - deploy-service:
+          name: deploy-<< pipeline.paramaters.service-name >>
+          directory: << pipeline.parameters.service-name >>
+          requires: build-service
+          filters:
+            branches:
+              only: master
 
 ##################
 # JOB DEFINITIONS
@@ -119,4 +127,13 @@ jobs:
           command: |
             go test
           working_directory: << parameters.directory >>
+
+  deploy-service:
+    parameters:
+      directory:
+        type: string
+    executor: go
+    steps:
+      - checkout
+      - echo "Hello << parameters.directory >>"
 
