@@ -72,7 +72,7 @@ jobs:
                 curl -u ${CIRCLE_TOKEN}: -X POST https://circleci.com/api/v2/project/gh/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pipeline \
                 -H 'Content-Type: application/json' \
                 -H 'Accept: application/json' \
-                -d '{"branch": "'"${CIRCLE_BRANCH}"'", "parameters": {"service-name": "'"${line}"'"}}'; \
+                -d '{"branch": "'"${CIRCLE_BRANCH}"'", "parameters": {"service-name": "'"${line}"'", "gatekeeper": false, "service": true}}'; \
               fi; \
             done \<<< "$DIRS"
 
