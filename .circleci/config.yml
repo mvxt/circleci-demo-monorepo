@@ -36,11 +36,10 @@ workflows:
       - gatekeeper:
           context: test-monorepo-context
   
-  service:
+  service-<< pipeline.parameters.service-name >>:
     when: << pipeline.parameters.service >>
     jobs:
       - build-service:
-          name: test-service-<< pipeline.parameters.service-name >>
           directory: << pipeline.parameters.service-name >>
 
 ##################
