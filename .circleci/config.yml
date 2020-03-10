@@ -50,6 +50,7 @@ jobs:
   gatekeeper:
     executor: go
     steps:
+      - checkout
       - run:
           name: Check folders that changed, and if not in ignore list, make API trigger call for them
           command: |
