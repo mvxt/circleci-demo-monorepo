@@ -93,9 +93,11 @@ jobs:
       - run:
           name: Install dependencies
           command: go mod download
+          working_directory: << parameters.directory >>
       - run:
           name: Install golint
           command: go get -u golang.org/x/lint/golint
+          working_directory: << parameters.directory >>
       - save_cache:
           key: gomod-cache-v1-{{ checksum "<< parameters.directory >>/go.sum" }}
           paths:
