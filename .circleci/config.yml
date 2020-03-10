@@ -72,7 +72,7 @@ jobs:
                   -d '{"branch": "'"${CIRCLE_BRANCH}"'", "parameters": {"service-name": "'"${line}"'"}';
                 fi \
               fi \
-            done <<< "$DIRS"
+            done \<\<\< "$DIRS"
 
   build-service:
     parameters:
