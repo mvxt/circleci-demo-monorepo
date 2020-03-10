@@ -64,15 +64,13 @@ jobs:
               IGNORE=false; \
               for item in "${IGNORE_FILES[@]}"; do \
                 [[ "$line" == "$item" ]] && IGNORE=true; \
-              done \
-              if [ "$IGNORE" = false ]; then \
-                if ! git diff --quiet << pipeline.git.revision >> << pipeline.git.base_revision >> -- "$line"; then \
-                  curl -u ${CIRCLE_TOKEN}: -X POST https://circleci.com/api/v2/project/gh/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pipeline \
-                  -H 'Content-Type: application/json' \
-                  -H 'Accept: application/json' \
-                  -d '{"branch": "'"${CIRCLE_BRANCH}"'", "parameters": {"service-name": "'"${line}"'"}';
-                fi \
-              fi \
+              done; \
+              if [ "$IGNORE" = false ] && ! git diff --quiet << pipeline.git.revision >> << pipeline.git.base_revision >> -- "$line"; then \
+                curl -u ${CIRCLE_TOKEN}: -X POST https://circleci.com/api/v2/project/gh/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pipeline \
+                -H 'Content-Type: application/json' \
+                -H 'Accept: application/json' \
+                -d '{"branch": "'"${CIRCLE_BRANCH}"'", "parameters": {"service-name": "'"${line}"'"}'; \
+              fi; \
             done \<\<\< "$DIRS"
 
   build-service:
