@@ -46,7 +46,7 @@ workflows:
           name: deploy-<< pipeline.parameters.service-name >>
           directory: << pipeline.parameters.service-name >>
           requires:
-            - build-service
+            - build-<< pipeline.parameters.service-name >>
           filters:
             branches:
               only: master
