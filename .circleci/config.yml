@@ -42,9 +42,6 @@ workflows:
       - build-service:
           name: build-<< pipeline.paramaters.service-name >>
           directory: << pipeline.parameters.service-name >>
-      - deploy-service:
-          name: deploy-<< pipeline.paramaters.service-name >>
-          directory: << pipeline.parameters.service-name >>
 
 ##################
 # JOB DEFINITIONS
