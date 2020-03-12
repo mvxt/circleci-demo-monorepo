@@ -123,7 +123,7 @@ jobs:
             else \
               echo "PASS: no formatting issues found"; \
             fi
-          working_directory: << parameters.directory >>
+          working_directory: << parameters.directory >>/cmd/<< parameters.directory >>
       - run:
           name: Run tests
           command: |
