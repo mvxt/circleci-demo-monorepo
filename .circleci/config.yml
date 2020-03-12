@@ -39,14 +39,15 @@ workflows:
   service:
     when: << pipeline.parameters.service >>
     jobs:
-      - build-service:
+      - test-service:
           name: build-<< pipeline.parameters.service-name >>
           directory: << pipeline.parameters.service-name >>
-      - deploy-service:
+      - build-docker:
           name: deploy-<< pipeline.parameters.service-name >>
           directory: << pipeline.parameters.service-name >>
           requires:
             - build-<< pipeline.parameters.service-name >>
+          context: demo-prod
           filters:
             branches:
               only: master
@@ -89,7 +90,7 @@ jobs:
               echo "No services changed. Exiting"; \
             fi
 
-  build-service:
+  test-service:
     parameters:
       directory:
         type: string
@@ -127,14 +128,29 @@ jobs:
           name: Run tests
           command: |
             go test
-          working_directory: << parameters.directory >>
+          working_directory: << parameters.directory >>/cmd/<< parameters.directory >>
 
-  deploy-service:
+  build-docker:
     parameters:
       directory:
         type: string
     executor: go
     steps:
       - checkout
-      - run: echo "Hello << parameters.directory >>"
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build Docker image, tag it
+          command: docker build -t ${TAG} -t ${TAG}:${CIRCLE_SHA1} .
+          working_directory: << parameters.directory >>
+          environment:
+            TAG: mikeyvxt/circleci-demo-monorepo-<< parameters.directory >>
+      - run:
+          name: Login to Dockerhub and push
+          command: |
+            echo $DOCKER_PWD | docker login -u $DOCKER_LOGIN --password-stdin
+            docker push ${TAG}
+            docker push ${TAG}:${CIRCLE_SHA1}
+          environment:
+            TAG: mikeyvxt/circleci-demo-monorepo-<< parameters.directory >>
 
