@@ -34,7 +34,7 @@ workflows:
     when: << pipeline.parameters.gatekeeper >>
     jobs:
       - gatekeeper:
-          context: test-monorepo-context
+          context: circle-api
   
   service:
     when: << pipeline.parameters.service >>
