@@ -8,55 +8,18 @@ executors:
     working_directory: ~/circleci-demo-monorepo
 
 parameters:
-  gatekeeper:
-    type: boolean
-    default: false
   build-user:
     type: boolean
     default: false
   build-world:
     type: boolean
     default: false
-  service:
-    type: boolean
-    default: false
-  service-name:
-    description: Name of service being built. Must be passed in by API call
-    type: string
-    default: ""
-  ignore-list:
-    description: List of folders to ignore checks for. Defined here in file
-    type: string
-    default: |
-      ignore_dir
-      ignore_another_dir
 
 ############
 # WORKFLOWS
 ############
 workflows:
   version: 2.1
-  gatekeeper:
-    when: << pipeline.parameters.gatekeeper >>
-    jobs:
-      - gatekeeper:
-          context: circle-api
-  
-  service:
-    when: << pipeline.parameters.service >>
-    jobs:
-      - test-service:
-          name: build-<< pipeline.parameters.service-name >>
-          directory: << pipeline.parameters.service-name >>
-      - build-docker:
-          name: deploy-<< pipeline.parameters.service-name >>
-          directory: << pipeline.parameters.service-name >>
-          requires:
-            - build-<< pipeline.parameters.service-name >>
-          context: demo-prod
-          filters:
-            branches:
-              only: master
 
   build-user:
     when: << pipeline.parameters.build-user >>
@@ -95,39 +58,6 @@ workflows:
 ##################
 version: 2.1
 jobs:
-  gatekeeper:
-    executor: go
-    steps:
-      - checkout
-      - run:
-          name: Check folders that changed, and if not in ignore list, make API trigger call for them
-          command: |
-            IGNORE_FILES=( << pipeline.parameters.ignore-list >> )
-            DIRS=$(ls -d */ | sed -e 's#/$##')
-            
-            # For every folder in directories
-            #   Check if folder in ignore list
-            #   If not, check if folder has changes in git and make API call
-            NO_BUILD=true
-            while IFS= read -r line; do \
-              IGNORE=false; \
-              for item in "${IGNORE_FILES[@]}"; do \
-                [[ "$line" == "$item" ]] && IGNORE=true; \
-              done; \
-              if [ "$IGNORE" = false ] && ! git diff --quiet << pipeline.git.revision >> << pipeline.git.base_revision >> -- "$line"; then \
-                echo "$line has changed, triggering"; \
-                NO_BUILD=false; \
-                curl -u ${CIRCLE_TOKEN}: -X POST https://circleci.com/api/v2/project/gh/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pipeline \
-                -H 'Content-Type: application/json' \
-                -H 'Accept: application/json' \
-                -d '{"branch": "'"${CIRCLE_BRANCH}"'", "parameters": {"service-name": "'"${line}"'", "gatekeeper": false, "service": true}}'; \
-              fi; \
-            done \<<< "$DIRS"
-
-            if [ "$NO_BUILD" = true ]; then \
-              echo "No services changed. Exiting"; \
-            fi
-
   test-service:
     parameters:
       directory:
