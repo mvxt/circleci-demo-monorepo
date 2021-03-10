@@ -8,7 +8,7 @@ import (
 
 func Hello() string {
 	glog.Info("Calling Hello()")
-	return "Hello User!"
+	return "Hello User whoo!!"
 }
 
 func main() {
