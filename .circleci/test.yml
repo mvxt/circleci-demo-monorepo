@@ -1,0 +1,194 @@
+#####################
+# COMMON DEFINITIONS
+#####################
+executors:
+  go:
+    docker:
+      - image: circleci/golang:1.14.0
+    working_directory: ~/circleci-demo-monorepo
+
+parameters:
+  gatekeeper:
+    type: boolean
+    default: false
+  build-user:
+    type: boolean
+    default: false
+  build-world:
+    type: boolean
+    default: false
+  service:
+    type: boolean
+    default: false
+  service-name:
+    description: Name of service being built. Must be passed in by API call
+    type: string
+    default: ""
+  ignore-list:
+    description: List of folders to ignore checks for. Defined here in file
+    type: string
+    default: |
+      ignore_dir
+      ignore_another_dir
+
+############
+# WORKFLOWS
+############
+workflows:
+  version: 2.1
+  gatekeeper:
+    when: << pipeline.parameters.gatekeeper >>
+    jobs:
+      - gatekeeper:
+          context: circle-api
+  
+  service:
+    when: << pipeline.parameters.service >>
+    jobs:
+      - test-service:
+          name: build-<< pipeline.parameters.service-name >>
+          directory: << pipeline.parameters.service-name >>
+      - build-docker:
+          name: deploy-<< pipeline.parameters.service-name >>
+          directory: << pipeline.parameters.service-name >>
+          requires:
+            - build-<< pipeline.parameters.service-name >>
+          context: demo-prod
+          filters:
+            branches:
+              only: master
+
+  build-user:
+    when: << pipeline.parameters.build-user >>
+    jobs:
+      - test-service:
+          name: build-user
+          directory: user
+      - build-docker:
+          name: deploy-user
+          directory: user
+          requires:
+            - build-user
+          context: demo-prod
+          filters:
+            branches:
+              only: master
+
+  build-world:
+    when: << pipeline.parameters.build-world >>
+    jobs:
+      - test-service:
+          name: build-world
+          directory: world
+      - build-docker:
+          name: deploy-world
+          directory: world
+          requires:
+            - build-world
+          context: demo-prod
+          filters:
+            branches:
+              only: master
+
+##################
+# JOB DEFINITIONS
+##################
+version: 2.1
+jobs:
+  gatekeeper:
+    executor: go
+    steps:
+      - checkout
+      - run:
+          name: Check folders that changed, and if not in ignore list, make API trigger call for them
+          command: |
+            IGNORE_FILES=( << pipeline.parameters.ignore-list >> )
+            DIRS=$(ls -d */ | sed -e 's#/$##')
+            
+            # For every folder in directories
+            #   Check if folder in ignore list
+            #   If not, check if folder has changes in git and make API call
+            NO_BUILD=true
+            while IFS= read -r line; do \
+              IGNORE=false; \
+              for item in "${IGNORE_FILES[@]}"; do \
+                [[ "$line" == "$item" ]] && IGNORE=true; \
+              done; \
+              if [ "$IGNORE" = false ] && ! git diff --quiet << pipeline.git.revision >> << pipeline.git.base_revision >> -- "$line"; then \
+                echo "$line has changed, triggering"; \
+                NO_BUILD=false; \
+                curl -u ${CIRCLE_TOKEN}: -X POST https://circleci.com/api/v2/project/gh/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pipeline \
+                -H 'Content-Type: application/json' \
+                -H 'Accept: application/json' \
+                -d '{"branch": "'"${CIRCLE_BRANCH}"'", "parameters": {"service-name": "'"${line}"'", "gatekeeper": false, "service": true}}'; \
+              fi; \
+            done \<<< "$DIRS"
+
+            if [ "$NO_BUILD" = true ]; then \
+              echo "No services changed. Exiting"; \
+            fi
+
+  test-service:
+    parameters:
+      directory:
+        type: string
+    executor: go
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - gomod-<< parameters.directory >>-cache-v1-{{ checksum "<< parameters.directory >>/go.sum" }}
+      - run:
+          name: Install dependencies
+          command: go mod download
+          working_directory: << parameters.directory >>
+      - run:
+          name: Install golint
+          command: go get -u golang.org/x/lint/golint
+          working_directory: << parameters.directory >>
+      - save_cache:
+          key: gomod-<< parameters.directory >>-cache-v1-{{ checksum "<< parameters.directory >>/go.sum" }}
+          paths:
+            - ~/go/pkg/mod
+      - run: 
+          name: Check code formatting 
+          command: |
+            files=$(go fmt)
+            if [[ $? != 0 ]]; then \
+              echo "go fmt ran into an error. Exiting" && exit 1; \
+            elif [[ $files ]]; then \
+              echo "go fmt found formatting errors in the follow files: $files" && exit 1; \
+            else \
+              echo "PASS: no formatting issues found"; \
+            fi
+          working_directory: << parameters.directory >>/cmd/<< parameters.directory >>
+      - run:
+          name: Run tests
+          command: |
+            go test
+          working_directory: << parameters.directory >>/cmd/<< parameters.directory >>
+
+  build-docker:
+    parameters:
+      directory:
+        type: string
+    executor: go
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build Docker image, tag it
+          command: docker build -t ${TAG} -t ${TAG}:${CIRCLE_SHA1} .
+          working_directory: << parameters.directory >>
+          environment:
+            TAG: mikeyvxt/circleci-demo-monorepo-<< parameters.directory >>
+      - run:
+          name: Login to Dockerhub and push
+          command: |
+            echo $DOCKER_PWD | docker login -u $DOCKER_LOGIN --password-stdin
+            docker push ${TAG}
+            docker push ${TAG}:${CIRCLE_SHA1}
+          environment:
+            TAG: mikeyvxt/circleci-demo-monorepo-<< parameters.directory >>
+
