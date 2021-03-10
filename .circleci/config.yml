@@ -10,6 +10,6 @@ workflows:
     jobs:
       - path-filtering/filter:
           mapping: |
-            user/* build-user true
-            world/* build-world true
+            user/.* build-user true
+            world/.* build-world true
           base-revision: origin/master
