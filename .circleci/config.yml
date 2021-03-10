@@ -12,4 +12,4 @@ workflows:
           mapping: |
             user/* build-user true
             world/* build-world true
-
+          base-revision: origin/main
